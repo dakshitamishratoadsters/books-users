@@ -1,9 +1,10 @@
-# src/models/user.py
-from sqlmodel import SQLModel, Field, Column
+from sqlmodel import Relationship, SQLModel, Field, Column
 import sqlalchemy.dialects.postgresql as pg
 import uuid
 from datetime import datetime
-from src.auth.utils import generate_password_hash
+from typing import TYPE_CHECKING, List
+if TYPE_CHECKING:
+    from src.books.models import Book
 
 
 class User(SQLModel, table=True):
@@ -24,12 +25,20 @@ class User(SQLModel, table=True):
     email: str = Field(nullable=False, unique=True, index=True)
     password_hash: str = Field(nullable=False)
 
+    # role
+    role: str =Field(sa_column=Column(pg.VARCHAR,nullable =False,server_default='user'))
+
     created_at: datetime = Field(
        sa_column=Column(pg.TIMESTAMP, default=datetime.utcnow)
     )
 
     updated_at: datetime = Field(
         sa_column=Column(pg.TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
+    )
+
+    # add the relationship
+    books: List["Book"]= Relationship(
+        back_populates = "user",sa_relationship_kwargs={"lazy":"selectin"}
     )
 
     def __repr__(self) -> str:

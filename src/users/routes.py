@@ -3,10 +3,13 @@ from sqlmodel import Session
 from typing import List
 from src.db.database import get_session
 from src.users.schemas import UserCreate, UserUpdate, UserResponse
+from src.users.service import UserService
 from src.users.users_db import create_user, get_users, update_user, delete_user
 from fastapi import status
 
+
 router = APIRouter(prefix="/users", tags=["Users"])
+userservice = UserService()
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -33,3 +36,4 @@ def delete_user_route(user_id: str, session: Session = Depends(get_session)):
     if not success:
         raise HTTPException(status_code=404, detail="User not found")
     return {"message": "User deleted"}
+

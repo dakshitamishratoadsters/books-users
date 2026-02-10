@@ -6,24 +6,28 @@ from src.books.models import Book
 from sqlmodel import Session
 from src.db.database import get_session
 from typing import List
-from src.auth.dependencies import AccessTokenBearer
+from src.auth.dependencies import AccessTokenBearer, RoleChecker
 
 
 book_router = APIRouter(prefix="/books", tags=["Books"])
 acccess_token_bearer = AccessTokenBearer()
+role_checker = Depends( RoleChecker(["admin", "user"]))
 
 
-@book_router.post("/", response_model=Book, status_code=status.HTTP_201_CREATED)
+@book_router.post("/", response_model=Book, status_code=status.HTTP_201_CREATED, dependencies=[role_checker])
 def create_book(
     book_data: BookCreate,
     session: Session = Depends(get_session),
     token_details=Depends(acccess_token_bearer),
 ):
+    user_id =token_details.get("user")["user_uid"]
     """Create a new book (Protected)"""
-    return book_service.create_book(session, book_data)
+    book = book_service.create_book(session, book_data,user_id)
+    print(book)
+    return book
 
 
-@book_router.get("/", response_model=List[Book])
+@book_router.get("/", response_model=List[Book],dependencies = [role_checker])
 def get_all_books(
     session: Session = Depends(get_session),
     token_details=Depends(acccess_token_bearer),
@@ -32,7 +36,7 @@ def get_all_books(
     return book_service.get_all_books(session)
 
 
-@book_router.put("/{book_id}", response_model=Book)
+@book_router.put("/{book_id}", response_model=Book,dependencies=[role_checker])
 def update_book(
     book_id: str,
     book_data: BookUpdate,
@@ -43,7 +47,7 @@ def update_book(
     return book_service.update_book(session, book_id, book_data)
 
 
-@book_router.delete("/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
+@book_router.delete("/{book_id}", status_code=status.HTTP_204_NO_CONTENT,dependencies=[role_checker])
 def delete_book(
     book_id: str,
     session: Session = Depends(get_session),

@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
+import uuid
 
 
 # schema for creating a book(POST)

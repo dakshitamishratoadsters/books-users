@@ -1,16 +1,20 @@
+import datetime
 from typing import List, Optional
 from sqlmodel import Session, select
 from fastapi import HTTPException
 from src.books.models import Book
 from src.books.schemas import BookCreate, BookUpdate
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import desc
 
 
 class BookService:
     """Service class for all book-related operations"""
     
-    def create_book(self, session: Session, book_data: BookCreate) -> Book:
+    def create_book(self, session: Session, book_data: BookCreate, user_uid: str) -> Book:
         """Create a new book"""
         book = Book(**book_data.dict())
+        book.user_uid = user_uid
         session.add(book)
         session.commit()
         session.refresh(book)
@@ -49,36 +53,36 @@ class BookService:
         session.commit()
         return {"message": "Book deleted successfully"}
     
-    def search_books(self, session: Session, query: str) -> List[Book]:
-        """Search books by title or author"""
-        statement = select(Book).where(
-            Book.title.contains(query) | Book.author.contains(query)
+    async def get_user_books(self, user_uid: str, session: AsyncSession):
+        statement = (
+            select(Book)
+            .where(Book.user_uid == user_uid)
+            .order_by(desc(Book.created_at))
         )
-        return session.exec(statement).all()
-    
-    def get_books_by_author(self, session: Session, author: str) -> List[Book]:
-        """Get all books by a specific author"""
-        statement = select(Book).where(Book.author == author)
-        return session.exec(statement).all()
-    
-    def get_books_by_genre(self, session: Session, genre: str) -> List[Book]:
-        """Get all books by genre"""
-        statement = select(Book).where(Book.genre == genre)
-        return session.exec(statement).all()
-    
-    def get_book_count(self, session: Session) -> int:
-        """Get total number of books"""
-        statement = select(Book)
-        result = session.exec(statement)
-        return len(result.all())
-    
-    def get_books_by_price_range(self, session: Session, min_price: float, max_price: float) -> List[Book]:
-        """Get books within a price range"""
-        statement = select(Book).where(
-            Book.price >= min_price, 
-            Book.price <= max_price
-        )
-        return session.exec(statement).all()
+
+        result = await session.exec(statement)
+
+        return result.all()
+
+    # async def create_book(
+    #     self, book_data: BookCreate, user_uid: str, session: AsyncSession
+    # ):
+    #     book_data_dict = book_data.model_dump()
+
+    #     new_book = Book(**book_data_dict)
+
+    #     new_book.published_date = datetime.strptime(
+    #         book_data_dict["published_date"], "%Y-%m-%d"
+    #     )
+
+    #     new_book.user_uid = user_uid
+
+    #     session.add(new_book)
+
+    #     await session.commit()
+
+    #     return new_book
+
 
 
 # Create a singleton instance for easy import

@@ -1,21 +1,26 @@
 from fastapi import APIRouter, Depends, status
+
+from src.users.schemas import UserResponse
 from .service import UserService
 from src.db.database import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.exceptions import HTTPException
 from src.auth.utils import create_access_token, REFRESH_TOKEN_EXPIRY, verify_password
 from datetime import timedelta ,datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from fastapi.responses import JSONResponse
 from src.db.redis import add_jti_to_blocklist
-from src.auth.dependencies  import AccessTokenBearer, RefreshTokenBearer
+from src.auth.dependencies  import AccessTokenBearer, RefreshTokenBearer ,RoleChecker
+from src.users.schemas import UserResponse
+from src.auth.dependencies import get_current_user
 
 
 auth_router = APIRouter()
 user_service = UserService()
+role_checker =RoleChecker(["admin","user"])
 
 class UserLoginModel(BaseModel):
-    email: str = Field(max_length=40)
+    email: EmailStr = Field(max_length=40)
     password: str  = Field(min_length=6)
 
 @auth_router.post("/login")
@@ -69,7 +74,7 @@ async def get_new_access_token(token_details: dict = Depends(RefreshTokenBearer(
 
 
 @auth_router.get('/logout')
-async def revoke_token(token_details:dict=Depends(AccessTokenBearer())):
+def revoke_token(token_details:dict=Depends(AccessTokenBearer())):
 
     print(f"Token details received: {token_details}")  # Debug line
     
@@ -77,7 +82,7 @@ async def revoke_token(token_details:dict=Depends(AccessTokenBearer())):
     print(f"Extracted JTI: {jti}")  # Debug line
 
     if jti:
-        await add_jti_to_blocklist(jti)
+        add_jti_to_blocklist(jti)
         return JSONResponse(
             content={
                 "message":"Logged Out Successfully"
@@ -89,3 +94,10 @@ async def revoke_token(token_details:dict=Depends(AccessTokenBearer())):
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail="Invalid token format - missing JTI"
         )
+    
+
+@auth_router.get("/me", response_model=UserResponse)
+async def get_current_user(
+    user=Depends(get_current_user), _: bool = Depends(role_checker)
+):
+    return user
