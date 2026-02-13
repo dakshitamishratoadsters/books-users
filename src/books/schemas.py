@@ -3,6 +3,9 @@ from typing import List, Optional
 import uuid
 
 
+class Book(BaseModel):
+    title:str
+
 # schema for creating a book(POST)
 class BookCreate(BaseModel):
     title: str

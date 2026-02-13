@@ -6,6 +6,8 @@ from sqlalchemy import pool
 from alembic import context
 from src.books.models import Book
 from src.users.models import User
+from src.db.models import *
+from booktag.models import *
 from sqlmodel import SQLModel
 
 # this is the Alembic Config object, which provides

@@ -27,33 +27,40 @@ class UserLoginModel(BaseModel):
 async def login_users(
     login_data: UserLoginModel, session: AsyncSession = Depends(get_session)
 ):
-    email = login_data.email
-    password_hash = login_data.password
+    try:
+        email = login_data.email
+        password_hash = login_data.password
 
-    user = await user_service.get_user_by_email(email, session)
+        user = await user_service.get_user_by_email(email, session)
 
-    if user is not None:
-        password_valid = verify_password(password_hash, user.password_hash)
+        if user is not None:
+            password_valid = verify_password(password_hash, user.password_hash)
 
-        if password_valid:
-            access_token = create_access_token(
-                user_data={"email": user.email, "user_uid": str(user.uid)}
-            )
+            if password_valid:
+                access_token = create_access_token(
+                    user_data={"email": user.email, "user_uid": str(user.uid)}
+                )
 
-            refresh_token = create_access_token(
-                user_data={"email": user.email, "user_uid": str(user.uid)},
-                refresh=True,
-                expiry=timedelta(days=REFRESH_TOKEN_EXPIRY),
-            )
+                refresh_token = create_access_token(
+                    user_data={"email": user.email, "user_uid": str(user.uid)},
+                    refresh=True,
+                    expiry=timedelta(days=REFRESH_TOKEN_EXPIRY),
+                )
 
-            return JSONResponse(
-                content={
-                    "message": "Login successful",
-                    "access_token": access_token,
-                    "refresh_token": refresh_token,
-                    "user": {"email": user.email, "uid": str(user.uid)},
-                }
-            )
+                return JSONResponse(
+                    content={
+                        "message": "Login successful",
+                        "access_token": access_token,
+                        "refresh_token": refresh_token,
+                        "user": {"email": user.email, "uid": str(user.uid)},
+                    }
+                )
+    except Exception as e:
+        print(f"Error during login: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred during login. Please try again later.",
+        )
 
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Email Or Password"
